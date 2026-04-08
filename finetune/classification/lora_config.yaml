@@ -1,0 +1,40 @@
+# ── 模型 ────────────────────────────────────────────────────────────────────
+model_name_or_path: ../../models/Qwen/Qwen2-1.5B-Instruct
+
+# ── LoRA ────────────────────────────────────────────────────────────────────
+lora_r: 8                         # 分类任务复杂度较低，r=8 通常足够
+lora_alpha: 16
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+
+# ── 数据 ────────────────────────────────────────────────────────────────────
+train_file: ../../data_preprocessing/processed/classification/train.jsonl
+val_file:   ../../data_preprocessing/processed/classification/val.jsonl
+max_seq_length: 1024              # 分类任务输入通常较短
+
+# ── 训练超参 ─────────────────────────────────────────────────────────────────
+output_dir: ../../outputs/classification
+num_train_epochs: 5               # 分类数据通常较少，多训练几轮
+per_device_train_batch_size: 4
+per_device_eval_batch_size: 4
+gradient_accumulation_steps: 4
+learning_rate: 1e-4
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+weight_decay: 0.01
+fp16: false
+bf16: true
+dataloader_num_workers: 4
+
+# ── 日志 / 保存 ──────────────────────────────────────────────────────────────
+logging_steps: 10
+eval_strategy: epoch
+save_strategy: epoch
+save_total_limit: 2
+load_best_model_at_end: true
+metric_for_best_model: eval_loss
+report_to: tensorboard
