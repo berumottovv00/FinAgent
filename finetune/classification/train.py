@@ -1,8 +1,8 @@
 """
-文本摘要 LoRA 微调训练脚本
-底座：Qwen-7B-Instruct
-数据：data_preprocessing/processed/summarization/train.jsonl  /  val.jsonl
-输出：outputs/summarization/  (LoRA adapter + tokenizer)
+情感分类 LoRA 微调训练脚本
+底座：Qwen2-1.5B-Instruct
+数据：data_preprocessing/processed/classification/train.jsonl  /  val.jsonl
+输出：outputs/classification/  (LoRA adapter + tokenizer)
 
 用法：
     python train.py                          # 使用默认 lora_config.yaml
@@ -12,7 +12,6 @@
 
 import argparse
 import json
-import os
 from pathlib import Path
 
 import torch
@@ -54,7 +53,10 @@ def load_jsonl(path: Path) -> list[dict]:
 
 # ── 数据格式化 ───────────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = "你是一名专业的金融研报分析师，擅长将研报提炼为简明摘要。"
+SYSTEM_PROMPT = (
+    "你是一名专业的金融研报分析师，擅长判断研报的情感倾向。"
+    "只输出情感标签（正面/中性/负面）和理由，格式为：\n正面\n理由：..."
+)
 
 
 def format_sample(record: dict, tokenizer) -> dict:
@@ -108,11 +110,11 @@ def main():
     cfg = load_config(SCRIPT_DIR / args.config)
 
     # ── 路径解析 ────────────────────────────────────────────────────────────
-    model_path  = cfg["model_name_or_path"]          # 可以是 HF hub id 或本地路径
+    model_path  = cfg["model_name_or_path"]
     train_file  = resolve_path(SCRIPT_DIR, cfg["train_file"])
     val_file    = resolve_path(SCRIPT_DIR, cfg["val_file"])
     output_dir  = resolve_path(SCRIPT_DIR, cfg["output_dir"])
-    max_seq_len = cfg.get("max_seq_length", 2048)
+    max_seq_len = cfg.get("max_seq_length", 1024)
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -158,13 +160,10 @@ def main():
     # ── LoRA ────────────────────────────────────────────────────────────────
     lora_cfg = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
-        r=cfg.get("lora_r", 16),
-        lora_alpha=cfg.get("lora_alpha", 32),
+        r=cfg.get("lora_r", 8),
+        lora_alpha=cfg.get("lora_alpha", 16),
         lora_dropout=cfg.get("lora_dropout", 0.05),
-        target_modules=cfg.get("lora_target_modules", [
-            "q_proj", "k_proj", "v_proj", "o_proj",
-            "gate_proj", "up_proj", "down_proj",
-        ]),
+        target_modules=cfg.get("lora_target_modules", ["q_proj", "k_proj", "v_proj", "o_proj"]),
         bias="none",
         inference_mode=False,
     )
@@ -175,11 +174,11 @@ def main():
     # ── SFTConfig ───────────────────────────────────────────────────────────
     training_args = SFTConfig(
         output_dir=str(output_dir),
-        num_train_epochs=cfg.get("num_train_epochs", 3),
-        per_device_train_batch_size=cfg.get("per_device_train_batch_size", 2),
-        per_device_eval_batch_size=cfg.get("per_device_eval_batch_size", 2),
-        gradient_accumulation_steps=cfg.get("gradient_accumulation_steps", 8),
-        learning_rate=cfg.get("learning_rate", 2e-4),
+        num_train_epochs=cfg.get("num_train_epochs", 5),
+        per_device_train_batch_size=cfg.get("per_device_train_batch_size", 4),
+        per_device_eval_batch_size=cfg.get("per_device_eval_batch_size", 4),
+        gradient_accumulation_steps=cfg.get("gradient_accumulation_steps", 4),
+        learning_rate=cfg.get("learning_rate", 1e-4),
         lr_scheduler_type=cfg.get("lr_scheduler_type", "cosine"),
         warmup_steps=cfg.get("warmup_steps", 10),
         weight_decay=cfg.get("weight_decay", 0.01),

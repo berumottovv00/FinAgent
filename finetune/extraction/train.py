@@ -1,8 +1,8 @@
 """
-文本摘要 LoRA 微调训练脚本
-底座：Qwen-7B-Instruct
-数据：data_preprocessing/processed/summarization/train.jsonl  /  val.jsonl
-输出：outputs/summarization/  (LoRA adapter + tokenizer)
+关键信息提取 LoRA 微调训练脚本
+底座：Qwen2-1.5B-Instruct
+数据：data_preprocessing/processed/extraction/train.jsonl  /  val.jsonl
+输出：outputs/extraction/  (LoRA adapter + tokenizer)
 
 用法：
     python train.py                          # 使用默认 lora_config.yaml
@@ -12,7 +12,6 @@
 
 import argparse
 import json
-import os
 from pathlib import Path
 
 import torch
@@ -54,7 +53,7 @@ def load_jsonl(path: Path) -> list[dict]:
 
 # ── 数据格式化 ───────────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = "你是一名专业的金融研报分析师，擅长将研报提炼为简明摘要。"
+SYSTEM_PROMPT = "你是一名专业的金融研报信息提取助手，擅长从研报中准确抽取结构化数据，只输出 JSON，不添加任何额外说明。"
 
 
 def format_sample(record: dict, tokenizer) -> dict:
@@ -108,7 +107,7 @@ def main():
     cfg = load_config(SCRIPT_DIR / args.config)
 
     # ── 路径解析 ────────────────────────────────────────────────────────────
-    model_path  = cfg["model_name_or_path"]          # 可以是 HF hub id 或本地路径
+    model_path  = cfg["model_name_or_path"]
     train_file  = resolve_path(SCRIPT_DIR, cfg["train_file"])
     val_file    = resolve_path(SCRIPT_DIR, cfg["val_file"])
     output_dir  = resolve_path(SCRIPT_DIR, cfg["output_dir"])
